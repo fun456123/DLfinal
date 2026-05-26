@@ -1,13 +1,11 @@
 {
+  "checkpoint": "runs/tiny_sdv5_fusion_a_c/best.pt",
   "dataset_root": "dataset",
   "dataset": "tiny-genimage",
+  "split": "val",
   "generators": ["sdv5"],
-  "epochs": 10,
   "batch_size": 64,
-  "lr": 0.0003,
-  "weight_decay": 0.0001,
   "num_workers": 2,
-  "val_fraction": 0.1,
   "semantic_size": 224,
   "forensic_size": 224,
   "branch_a_backbone": "resnet18",
@@ -21,7 +19,5 @@
   "freeze_branch_c": false,
   "fusion_hidden_dim": 256,
   "fusion_dropout": 0.3,
-  "output_dir": "runs/tiny_sdv5_fusion_a_c",
-  "seed": 42,
   "device": "cuda"
 }
