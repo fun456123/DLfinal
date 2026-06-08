@@ -25,7 +25,7 @@
   "fusion_hidden_dim": 256,
   "fusion_dropout": 0.3,
   "augment": true,
-  "progress_every": 10,
+  "progress_every": 25,
   "max_train_samples": null,
   "max_val_samples": null,
   "output_dir": "runs/cifake_tiny_aug_fusion_a_c",

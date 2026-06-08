@@ -27,7 +27,24 @@ def parse_args() -> argparse.Namespace:
             f"{', '.join(DATASET_NAMES)}, or pass both names / 'both' to merge them."
         ),
     )
-    parser.add_argument("--split", choices=["train", "test", "val"], default="test")
+    parser.add_argument(
+        "--split",
+        choices=["train", "test", "val"],
+        default="test",
+        help="Default split. With --dataset both --split test, Tiny-GenImage uses val.",
+    )
+    parser.add_argument(
+        "--cifake-split",
+        choices=["train", "test", "val"],
+        default=None,
+        help="Override --split for CIFAKE.",
+    )
+    parser.add_argument(
+        "--tiny-genimage-split",
+        choices=["train", "test", "val"],
+        default=None,
+        help="Override --split for Tiny-GenImage.",
+    )
     parser.add_argument("--generators", nargs="*", default=None)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
@@ -68,7 +85,8 @@ def main() -> None:
         train=False,
         augment=False,
     )
-    dataset = build_dataset(args.dataset_root, args.dataset, args.split, transform, generators=args.generators)
+    splits = _resolve_dataset_splits(args)
+    dataset = build_dataset(args.dataset_root, args.dataset, splits, transform, generators=args.generators)
     full_dataset_counts = _count_dataset_records(dataset)
     if args.max_samples:
         dataset = Subset(dataset, range(min(args.max_samples, len(dataset))))
@@ -83,14 +101,15 @@ def main() -> None:
         pin_memory=device.type == "cuda",
     )
     print(f"Datasets: {', '.join(args.dataset)}", flush=True)
-    print(f"Split: {args.split}", flush=True)
+    print(f"Splits: {splits}", flush=True)
     print(f"Dataset counts: {dict(dataset_counts)}", flush=True)
     if args.max_samples:
         print(f"Full split counts before --max-samples: {dict(full_dataset_counts)}", flush=True)
     if missing_datasets:
         print(
             "Warning: no records were found for "
-            f"{', '.join(missing_datasets)} with split={args.split}.",
+            + ", ".join(f"{name} with split={splits[name]}" for name in missing_datasets)
+            + ".",
             flush=True,
         )
     print(f"Evaluating {len(dataset)} images in {len(loader)} batches.", flush=True)
@@ -118,7 +137,7 @@ def main() -> None:
     result = {
         "checkpoint_epoch": checkpoint.get("epoch"),
         "datasets": args.dataset,
-        "split": args.split,
+        "splits": splits,
         "dataset_counts": dict(dataset_counts),
         "overall": metrics,
         "by_generator": evaluate_by_generator(model, loader, device, progress_every=args.progress_every),
@@ -135,6 +154,17 @@ def _count_dataset_records(dataset: object) -> Counter[str]:
     if hasattr(dataset, "records"):
         return Counter(record.dataset for record in dataset.records)
     return Counter()
+
+
+def _resolve_dataset_splits(args: argparse.Namespace) -> dict[str, str]:
+    splits = {name: args.split for name in args.dataset}
+    if len(args.dataset) > 1 and args.split == "test" and "tiny-genimage" in splits:
+        splits["tiny-genimage"] = "val"
+    if args.cifake_split is not None and "cifake" in splits:
+        splits["cifake"] = args.cifake_split
+    if args.tiny_genimage_split is not None and "tiny-genimage" in splits:
+        splits["tiny-genimage"] = args.tiny_genimage_split
+    return splits
 
 
 if __name__ == "__main__":

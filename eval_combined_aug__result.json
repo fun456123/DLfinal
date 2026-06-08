@@ -1,0 +1,90 @@
+{
+  "checkpoint_epoch": 9,
+  "datasets": [
+    "cifake",
+    "tiny-genimage"
+  ],
+  "splits": {
+    "cifake": "test",
+    "tiny-genimage": "val"
+  },
+  "dataset_counts": {
+    "cifake": 20000,
+    "tiny-genimage": 7000
+  },
+  "overall": {
+    "accuracy": 0.9522222222222222,
+    "balanced_accuracy": 0.9522222222222222,
+    "precision": 0.9730357973035797,
+    "recall": 0.9302222222222222,
+    "f1": 0.9511474664848897,
+    "auroc": 0.9922101497650146,
+    "loss": 0.12465198491237782
+  },
+  "by_generator": {
+    "adm": {
+      "accuracy": 0.963,
+      "balanced_accuracy": 0.963,
+      "precision": 0.9460500963391136,
+      "recall": 0.982,
+      "f1": 0.9636898920510304,
+      "auroc": 0.993503987789154
+    },
+    "biggan": {
+      "accuracy": 0.973,
+      "balanced_accuracy": 0.973,
+      "precision": 0.9574468085106383,
+      "recall": 0.99,
+      "f1": 0.9734513274336284,
+      "auroc": 0.9971879720687866
+    },
+    "glide": {
+      "accuracy": 0.948,
+      "balanced_accuracy": 0.948,
+      "precision": 0.9392156862745098,
+      "recall": 0.958,
+      "f1": 0.9485148514851485,
+      "auroc": 0.9829440116882324
+    },
+    "midjourney": {
+      "accuracy": 0.754,
+      "balanced_accuracy": 0.754,
+      "precision": 0.9319727891156463,
+      "recall": 0.548,
+      "f1": 0.6901763224181361,
+      "auroc": 0.894931972026825
+    },
+    "sdv5": {
+      "accuracy": 0.85,
+      "balanced_accuracy": 0.85,
+      "precision": 0.9419191919191919,
+      "recall": 0.746,
+      "f1": 0.8325892857142857,
+      "auroc": 0.9516839981079102
+    },
+    "stable_diffusion_1_4": {
+      "accuracy": 0.9777,
+      "balanced_accuracy": 0.9777,
+      "precision": 0.9828178694158075,
+      "recall": 0.9724,
+      "f1": 0.9775811802553533,
+      "auroc": 0.9976885318756104
+    },
+    "vqdm": {
+      "accuracy": 0.842,
+      "balanced_accuracy": 0.842,
+      "precision": 0.9430051813471503,
+      "recall": 0.728,
+      "f1": 0.8216704288939053,
+      "auroc": 0.9488760232925415
+    },
+    "wukong": {
+      "accuracy": 0.826,
+      "balanced_accuracy": 0.8260000000000001,
+      "precision": 0.9179487179487179,
+      "recall": 0.716,
+      "f1": 0.8044943820224718,
+      "auroc": 0.9413999915122986
+    }
+  }
+}

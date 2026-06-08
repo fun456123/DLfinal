@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
 
 from PIL import Image
 import torch
@@ -143,7 +143,7 @@ def build_tiny_genimage_records(
 def build_dataset(
     dataset_root: str | Path,
     dataset_name: str | list[str] | tuple[str, ...],
-    split: str,
+    split: str | Mapping[str, str],
     transform: Callable | None,
     generators: list[str] | None = None,
 ) -> ForensicImageDataset:
@@ -151,10 +151,11 @@ def build_dataset(
     dataset_names = normalize_dataset_names(dataset_name)
     records: list[ImageRecord] = []
     for name in dataset_names:
+        dataset_split = split[name] if isinstance(split, Mapping) else split
         if name == "cifake":
-            records.extend(build_cifake_records(root, split))
+            records.extend(build_cifake_records(root, dataset_split))
         elif name == "tiny-genimage":
-            records.extend(build_tiny_genimage_records(root, split, generators))
+            records.extend(build_tiny_genimage_records(root, dataset_split, generators))
     if not records:
         raise ValueError(f"No images found for dataset={dataset_names}, split={split}, generators={generators}")
     return ForensicImageDataset(records, transform=transform)
