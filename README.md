@@ -1,15 +1,17 @@
-# AI 生成影像偵測：Branch A + Branch C 雙分支融合模型
+# AI 生成影像偵測：Branch A + Branch Ｂ 雙分支融合模型
+
+報告裡的branch B在這裡全部改稱branch c
 
 本專案是一個用於 **AI-generated image detection** 的深度學習分類系統，目標是判斷輸入影像是真實影像還是 AI 生成影像。專案核心模型採用雙分支設計：
 
 - **Branch A：Semantic / Global Feature Branch**  
   使用 ResNet 擷取整張影像的語意與全域視覺特徵。
 
-- **Branch C：Patch-Level Forensic Branch**  
+- **Branch Ｃ：Patch-Level Forensic Branch**  
   使用 FFT 頻域能量挑選可疑 patch，擷取局部鑑識特徵。
 
 - **Fusion Classifier：Feature-Level Fusion**  
-  將 Branch A 與 Branch C 的特徵串接後，透過 MLP 輸出 real/fake 二元分類結果。
+  將 Branch A 與 Branch Ｃ 的特徵串接後，透過 MLP 輸出 real/fake 二元分類結果。
 
 整體概念是：AI 生成影像不只可能在語意層面與真實影像不同，也可能在局部紋理、頻率分布、壓縮痕跡與細節一致性上留下痕跡。因此本專案同時觀察「整張圖的高階語意」與「局部 patch 的頻域鑑識訊號」。
 
@@ -19,7 +21,7 @@
 
 - 支援 CIFAKE 與 Tiny-GenImage 兩種資料集格式。
 - 支援單資料集訓練，也支援合併多資料集訓練。
-- 提供 Branch A + Branch C 的融合式 AI 影像偵測模型。
+- 提供 Branch A + Branch B 的融合式 AI 影像偵測模型。
 - 使用 FFT high-frequency energy 進行 patch 選擇。
 - 支援資料增強、訓練進度輸出、checkpoint 儲存。
 - 提供整體評估、依 generator 分組評估，以及失真魯棒性評估。
