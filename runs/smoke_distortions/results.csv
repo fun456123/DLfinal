@@ -1,9 +1,0 @@
-distortion,checkpoint_epoch,dataset,split,num_samples,accuracy,balanced_accuracy,precision,recall,f1,auroc,loss
-clean,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.664181649684906
-jpeg_q90,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6641778349876404
-jpeg_q70,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6634896993637085
-jpeg_q50,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6623580455780029
-jpeg_q30,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6645098328590393
-blur,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6733084917068481
-resize,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.6706081628799438
-noise,1,cifake,test,2,1.0,0.5,0.0,0.0,0.0,nan,0.662240743637085
