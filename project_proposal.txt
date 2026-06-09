@@ -123,7 +123,7 @@ DCT coefficients。
 High-pass residual。
 SRM-like filters。
 此分支負責偵測生成模型可能留下的 spectral artifact、upsampling trace、noise inconsistency。相關研究顯示，生成影像常在高頻或頻譜分布上與真實影像不同，這類特徵對 AI-generated image detection 很重要。(arXiv)
-Branch C: Patch-Level Forensic Branch
+Branch B: Patch-Level Forensic Branch
 將影像切成 patches，選取高頻與低頻 patch，分別抽取局部特徵。這個設計參考 AIDE 的概念：同時利用 high-level semantic embedding 與 low-level patchwise features，捕捉 noise pattern、anti-aliasing、local artifact 等線索。(arXiv)
 最後將三個分支的特徵 concat，輸入 fusion classifier：
 

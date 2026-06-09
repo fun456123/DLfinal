@@ -1,16 +1,16 @@
-# Branch A + Branch C Fusion Model Update Notes
+# Branch A + Branch B Fusion Model Update Notes
 
-這份文件說明目前為了完成 `Branch A + Branch C` 主架構，我新增與修改了哪些檔案，以及 Branch C 需要提供的 feature interface。
+這份文件說明目前為了完成 `Branch A + Branch B` 主架構，我新增與修改了哪些檔案，以及 Branch B 需要提供的 feature interface。
 
 目前設計重點是：
 
 ```text
 image_semantic → Branch A → feature_a
-image_forensic → Branch C → feature_c
-concat(feature_a, feature_c) → fusion classifier → real/fake logits
+image_forensic → Branch B → feature_b
+concat(feature_a, feature_b) → fusion classifier → real/fake logits
 ```
 
-也就是訓練時不是只訓練 fusion classifier，而是會讓 Branch A、Branch C、fusion classifier 一起 end-to-end training，除非之後在 config 裡設定 freeze。
+也就是訓練時不是只訓練 fusion classifier，而是會讓 Branch A、Branch B、fusion classifier 一起 end-to-end training，除非之後在 config 裡設定 freeze。
 
 ---
 
@@ -58,7 +58,7 @@ Branch A 不直接負責最後分類，而是輸出 feature 給 fusion model 使
 
 ```text
 Branch A: semantic/global branch
-Branch C: patch-level forensic branch
+Branch B: patch-level forensic branch
 ```
 
 模型輸入是一整個 batch dictionary：
@@ -77,8 +77,8 @@ Branch C: patch-level forensic branch
 {
     "logits": logits,          # shape: (B,)
     "feature_a": feature_a,    # shape: (B, branch_a_feature_dim)
-    "feature_c": feature_c,    # shape: (B, branch_c_feature_dim)
-    "features": fused_feature  # shape: (B, branch_a_feature_dim + branch_c_feature_dim)
+    "feature_b": feature_b,    # shape: (B, branch_b_feature_dim)
+    "features": fused_feature  # shape: (B, branch_a_feature_dim + branch_b_feature_dim)
 }
 ```
 
@@ -100,7 +100,7 @@ Branch C: patch-level forensic branch
 
 ### 2.1 `src/engine.py`
 
-原本 `engine.py` 只支援 Branch C-only，會寫死使用：
+原本 `engine.py` 只支援 Branch B-only，會寫死使用：
 
 ```python
 batch["image_forensic"]
@@ -133,25 +133,25 @@ outputs["logits"]
 model(batch["image_forensic"])
 ```
 
-也就是如果 Branch C 還是舊版、沒有正確接到 fusion model，就會直接報錯。
+也就是如果 Branch B 還是舊版、沒有正確接到 fusion model，就會直接報錯。
 
 ---
 
 ### 2.2 `train.py`
 
-原本 `train.py` 是訓練 Branch C-only。
+原本 `train.py` 是訓練 Branch B-only。
 
 現在改成訓練完整 fusion model：
 
 ```text
-Branch A + Branch C → fusion classifier
+Branch A + Branch B → fusion classifier
 ```
 
 也就是 `train.py` 會建立：
 
 ```python
-branch_c = PatchForensicBranch(...)
-model = FusionForensicDetector(branch_c=branch_c, ...)
+branch_b = PatchForensicBranch(...)
+model = FusionForensicDetector(branch_b=branch_b, ...)
 ```
 
 訓練時 optimizer 使用：
@@ -164,7 +164,7 @@ model.parameters()
 
 ```text
 Branch A parameters
-Branch C parameters
+Branch B parameters
 Fusion classifier parameters
 ```
 
@@ -177,20 +177,20 @@ Fusion classifier parameters
 或：
 
 ```json
-"freeze_branch_c": true
+"freeze_branch_b": true
 ```
 
 ---
 
 ### 2.3 `evaluate.py`
 
-原本 `evaluate.py` 只會建立 Branch C-only model 來載入 checkpoint。
+原本 `evaluate.py` 只會建立 Branch B-only model 來載入 checkpoint。
 
 現在改成建立完整 fusion model：
 
 ```python
-branch_c = PatchForensicBranch(...)
-model = FusionForensicDetector(branch_c=branch_c, ...)
+branch_b = PatchForensicBranch(...)
+model = FusionForensicDetector(branch_b=branch_b, ...)
 ```
 
 因此 evaluation checkpoint 必須是 fusion model 訓練出來的 checkpoint。
@@ -199,7 +199,7 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
 
 ## 3. 新增 config 檔案
 
-### 3.1 `configs/cifake_fusion_a_c.json`
+### 3.1 `configs/cifake_fusion_a_b.json`
 
 用於 CIFAKE 的 fusion model training。
 
@@ -228,13 +228,13 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
   "patch_size": 16,
   "stride": 8,
   "top_k": 4,
-  "branch_c_feature_dim": 128,
-  "freeze_branch_c": false,
+  "branch_b_feature_dim": 128,
+  "freeze_branch_b": false,
 
   "fusion_hidden_dim": 256,
   "fusion_dropout": 0.3,
 
-  "output_dir": "runs/cifake_fusion_a_c",
+  "output_dir": "runs/cifake_fusion_a_b",
   "seed": 42,
   "device": "cuda"
 }
@@ -242,7 +242,7 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
 
 ---
 
-### 3.2 `configs/tiny_sdv5_fusion_a_c.json`
+### 3.2 `configs/tiny_sdv5_fusion_a_b.json`
 
 用於 Tiny-GenImage，訓練 generator 為 `sdv5` 的 fusion model。
 
@@ -272,13 +272,13 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
   "patch_size": 32,
   "stride": 16,
   "top_k": 8,
-  "branch_c_feature_dim": 128,
-  "freeze_branch_c": false,
+  "branch_b_feature_dim": 128,
+  "freeze_branch_b": false,
 
   "fusion_hidden_dim": 256,
   "fusion_dropout": 0.3,
 
-  "output_dir": "runs/tiny_sdv5_fusion_a_c",
+  "output_dir": "runs/tiny_sdv5_fusion_a_b",
   "seed": 42,
   "device": "cuda"
 }
@@ -286,7 +286,7 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
 
 ---
 
-### 3.3 `configs/eval_cifake_fusion_a_c.json`
+### 3.3 `configs/eval_cifake_fusion_a_b.json`
 
 用於 evaluate CIFAKE fusion model checkpoint。
 
@@ -294,7 +294,7 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
 
 ```json
 {
-  "checkpoint": "runs/cifake_fusion_a_c/best.pt",
+  "checkpoint": "runs/cifake_fusion_a_b/best.pt",
 
   "dataset_root": "dataset",
   "dataset": "cifake",
@@ -314,8 +314,8 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
   "patch_size": 16,
   "stride": 8,
   "top_k": 4,
-  "branch_c_feature_dim": 128,
-  "freeze_branch_c": false,
+  "branch_b_feature_dim": 128,
+  "freeze_branch_b": false,
 
   "fusion_hidden_dim": 256,
   "fusion_dropout": 0.3,
@@ -326,11 +326,11 @@ model = FusionForensicDetector(branch_c=branch_c, ...)
 
 ---
 
-## 4. Branch C 必須提供的 interface
+## 4. Branch B 必須提供的 interface
 
-目前 fusion model 不再相容舊的 Branch C 寫法。
+目前 fusion model 不再相容舊的 Branch B 寫法。
 
-Branch C 一定要提供：
+Branch B 一定要提供：
 
 ```python
 extract_features(image_forensic)
@@ -339,7 +339,7 @@ extract_features(image_forensic)
 也就是：
 
 ```python
-feature_c = branch_c.extract_features(image_forensic)
+feature_b = branch_b.extract_features(image_forensic)
 ```
 
 ### 4.1 輸入格式
@@ -369,29 +369,29 @@ image_forensic.shape == (batch_size, 3, H, W)
 
 ### 4.2 輸出格式
 
-Branch C 的 `extract_features()` 必須回傳一個 2D tensor：
+Branch B 的 `extract_features()` 必須回傳一個 2D tensor：
 
 ```python
-feature_c.shape == (batch_size, branch_c_feature_dim)
+feature_b.shape == (batch_size, branch_b_feature_dim)
 ```
 
 目前 config 預設：
 
 ```python
-branch_c_feature_dim = 128
+branch_b_feature_dim = 128
 ```
 
 所以預期輸出是：
 
 ```python
-feature_c.shape == (batch_size, 128)
+feature_b.shape == (batch_size, 128)
 ```
 
 ---
 
 ### 4.3 最小可接受範例
 
-Branch C 至少要長得像這樣：
+Branch B 至少要長得像這樣：
 
 ```python
 from __future__ import annotations
@@ -424,36 +424,36 @@ class PatchForensicBranch(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        # Optional: useful for Branch C-only ablation.
+        # Optional: useful for Branch B-only ablation.
         self.classifier = nn.Linear(feature_dim, 1)
 
     def extract_features(self, image_forensic: torch.Tensor) -> torch.Tensor:
-        feature_c = self.feature_extractor(image_forensic)
+        feature_b = self.feature_extractor(image_forensic)
 
-        if feature_c.ndim != 2:
+        if feature_b.ndim != 2:
             raise ValueError(
-                f"Branch C feature must be 2D, but got shape {tuple(feature_c.shape)}."
+                f"Branch B feature must be 2D, but got shape {tuple(feature_b.shape)}."
             )
 
-        if feature_c.shape[1] != self.feature_dim:
+        if feature_b.shape[1] != self.feature_dim:
             raise ValueError(
-                f"Branch C feature_dim mismatch. Expected {self.feature_dim}, "
-                f"but got {feature_c.shape[1]}."
+                f"Branch B feature_dim mismatch. Expected {self.feature_dim}, "
+                f"but got {feature_b.shape[1]}."
             )
 
-        return feature_c
+        return feature_b
 
     def forward(self, image_forensic: torch.Tensor) -> dict[str, torch.Tensor]:
-        feature_c = self.extract_features(image_forensic)
-        logits = self.classifier(feature_c).squeeze(1)
+        feature_b = self.extract_features(image_forensic)
+        logits = self.classifier(feature_b).squeeze(1)
 
         return {
             "logits": logits,
-            "features": feature_c,
+            "features": feature_b,
         }
 ```
 
-注意：上面只是最小格式範例，不是最終 Branch C 架構。真正的 Branch C 還是應該使用 patch-level forensic method，例如：
+注意：上面只是最小格式範例，不是最終 Branch B 架構。真正的 Branch B 還是應該使用 patch-level forensic method，例如：
 
 ```text
 image_forensic
@@ -463,7 +463,7 @@ image_forensic
  → select bottom-K low-frequency patches
  → high/low patch encoders
  → attention pooling
- → feature_c
+ → feature_b
 ```
 
 ---
@@ -476,19 +476,19 @@ image_forensic
 
 ```bash
 python train.py \
-  --config configs/cifake_fusion_a_c.json \
+  --config configs/cifake_fusion_a_b.json \
   --epochs 1 \
   --batch-size 16 \
   --num-workers 0 \
   --max-train-samples 64 \
   --max-val-samples 32 \
-  --output-dir runs/smoke_fusion_a_c
+  --output-dir runs/smoke_fusion_a_b
 ```
 
 如果 smoke test 成功，再正式跑：
 
 ```bash
-python train.py --config configs/cifake_fusion_a_c.json
+python train.py --config configs/cifake_fusion_a_b.json
 ```
 
 ---
@@ -496,7 +496,7 @@ python train.py --config configs/cifake_fusion_a_c.json
 ### 5.2 CIFAKE evaluation
 
 ```bash
-python evaluate.py --config configs/eval_cifake_fusion_a_c.json
+python evaluate.py --config configs/eval_cifake_fusion_a_b.json
 ```
 
 ---
@@ -504,7 +504,7 @@ python evaluate.py --config configs/eval_cifake_fusion_a_c.json
 ### 5.3 Tiny-GenImage training
 
 ```bash
-python train.py --config configs/tiny_sdv5_fusion_a_c.json
+python train.py --config configs/tiny_sdv5_fusion_a_b.json
 ```
 
 ---
@@ -550,15 +550,15 @@ prob_fake = torch.sigmoid(logits)
 
 ---
 
-### 6.3 Branch C feature dimension 必須對齊 config
+### 6.3 Branch B feature dimension 必須對齊 config
 
 如果 config 寫：
 
 ```json
-"branch_c_feature_dim": 128
+"branch_b_feature_dim": 128
 ```
 
-那 Branch C 的 `extract_features()` 就一定要回傳：
+那 Branch B 的 `extract_features()` 就一定要回傳：
 
 ```python
 (batch_size, 128)
@@ -568,7 +568,7 @@ prob_fake = torch.sigmoid(logits)
 
 ---
 
-### 6.4 現在不再支援舊 Branch C
+### 6.4 現在不再支援舊 Branch B
 
 新版 `engine.py`、`train.py`、`evaluate.py` 都是以完整 fusion model 為主。
 
@@ -586,4 +586,4 @@ model(batch)
 model(batch["image_forensic"])
 ```
 
-如果 Branch C 沒有提供正確的 `extract_features()`，整個訓練會直接報錯，這是故意設計的，目的是避免 silent bug 或 feature 接錯。
+如果 Branch B 沒有提供正確的 `extract_features()`，整個訓練會直接報錯，這是故意設計的，目的是避免 silent bug 或 feature 接錯。

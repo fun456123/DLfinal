@@ -121,8 +121,8 @@ class PatchForensicBranch(nn.Module):
         )
 
     def extract_features(self, images: torch.Tensor) -> torch.Tensor:
-        feature_c, _ = self._extract_features_with_aux(images)
-        return feature_c
+        feature_b, _ = self._extract_features_with_aux(images)
+        return feature_b
 
     def _extract_features_with_aux(self, images: torch.Tensor) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         high_patches, low_patches, scores = self.selector(images)
@@ -132,17 +132,17 @@ class PatchForensicBranch(nn.Module):
             [high_feat, low_feat, torch.abs(high_feat - low_feat), high_feat * low_feat],
             dim=1,
         )
-        feature_c = self.feature_projection(forensic_fusion)
+        feature_b = self.feature_projection(forensic_fusion)
 
-        if feature_c.ndim != 2:
+        if feature_b.ndim != 2:
             raise ValueError(
-                f"Branch C feature must be 2D, but got shape {tuple(feature_c.shape)}."
+                f"Branch B feature must be 2D, but got shape {tuple(feature_b.shape)}."
             )
 
-        if feature_c.shape[1] != self.feature_dim:
+        if feature_b.shape[1] != self.feature_dim:
             raise ValueError(
-                f"Branch C feature_dim mismatch. Expected {self.feature_dim}, "
-                f"but got {feature_c.shape[1]}."
+                f"Branch B feature_dim mismatch. Expected {self.feature_dim}, "
+                f"but got {feature_b.shape[1]}."
             )
 
         aux = {
@@ -151,13 +151,13 @@ class PatchForensicBranch(nn.Module):
             "low_feature": low_feat,
             "raw_features": forensic_fusion,
         }
-        return feature_c, aux
+        return feature_b, aux
 
     def forward(self, images: torch.Tensor) -> dict[str, torch.Tensor]:
-        feature_c, aux = self._extract_features_with_aux(images)
-        logits = self.classifier(feature_c).squeeze(1)
+        feature_b, aux = self._extract_features_with_aux(images)
+        logits = self.classifier(feature_b).squeeze(1)
         return {
             "logits": logits,
-            "features": feature_c,
+            "features": feature_b,
             **aux,
         }

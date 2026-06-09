@@ -14,7 +14,7 @@ class FusionForensicDetector(nn.Module):
 
     This model combines:
         Branch A: semantic / global feature branch
-        Branch C: patch-level forensic feature branch
+        Branch B: patch-level forensic feature branch
 
     Expected batch input:
         {
@@ -23,35 +23,35 @@ class FusionForensicDetector(nn.Module):
             "label": Tensor, shape (B,)
         }
 
-    Expected Branch C interface:
-        branch_c.extract_features(image_forensic) -> Tensor, shape (B, branch_c_feature_dim)
+    Expected Branch B interface:
+        branch_b.extract_features(image_forensic) -> Tensor, shape (B, branch_b_feature_dim)
 
     Output:
         {
             "logits": Tensor, shape (B,)
             "feature_a": Tensor, shape (B, branch_a_feature_dim)
-            "feature_c": Tensor, shape (B, branch_c_feature_dim)
-            "features": Tensor, shape (B, branch_a_feature_dim + branch_c_feature_dim)
+            "feature_b": Tensor, shape (B, branch_b_feature_dim)
+            "features": Tensor, shape (B, branch_a_feature_dim + branch_b_feature_dim)
         }
     """
 
     def __init__(
         self,
-        branch_c: nn.Module,
+        branch_b: nn.Module,
         branch_a_backbone: Literal["resnet18", "resnet34", "resnet50"] = "resnet18",
         branch_a_feature_dim: int = 128,
-        branch_c_feature_dim: int = 128,
+        branch_b_feature_dim: int = 128,
         fusion_hidden_dim: int = 256,
         fusion_dropout: float = 0.3,
         pretrained_branch_a: bool = True,
         freeze_branch_a: bool = False,
-        freeze_branch_c: bool = False,
+        freeze_branch_b: bool = False,
     ) -> None:
         super().__init__()
 
         self.branch_a_feature_dim = branch_a_feature_dim
-        self.branch_c_feature_dim = branch_c_feature_dim
-        self.fusion_input_dim = branch_a_feature_dim + branch_c_feature_dim
+        self.branch_b_feature_dim = branch_b_feature_dim
+        self.fusion_input_dim = branch_a_feature_dim + branch_b_feature_dim
 
         self.branch_a = SemanticBranchA(
             backbone=branch_a_backbone,
@@ -61,10 +61,10 @@ class FusionForensicDetector(nn.Module):
             freeze_backbone=freeze_branch_a,
         )
 
-        self.branch_c = branch_c
+        self.branch_b = branch_b
 
-        if freeze_branch_c:
-            for param in self.branch_c.parameters():
+        if freeze_branch_b:
+            for param in self.branch_b.parameters():
                 param.requires_grad = False
 
         self.fusion_classifier = nn.Sequential(
@@ -94,7 +94,7 @@ class FusionForensicDetector(nn.Module):
         image_forensic = batch["image_forensic"]
 
         feature_a = self.branch_a(image_semantic)
-        feature_c = self._extract_branch_c_features(image_forensic)
+        feature_b = self._extract_branch_b_features(image_forensic)
 
         self._validate_feature_shape(
             feature=feature_a,
@@ -102,47 +102,47 @@ class FusionForensicDetector(nn.Module):
             name="Branch A feature",
         )
         self._validate_feature_shape(
-            feature=feature_c,
-            expected_dim=self.branch_c_feature_dim,
-            name="Branch C feature",
+            feature=feature_b,
+            expected_dim=self.branch_b_feature_dim,
+            name="Branch B feature",
         )
 
-        fused_feature = torch.cat([feature_a, feature_c], dim=1)
+        fused_feature = torch.cat([feature_a, feature_b], dim=1)
         logits = self.fusion_classifier(fused_feature).squeeze(1)
 
         return {
             "logits": logits,
             "feature_a": feature_a,
-            "feature_c": feature_c,
+            "feature_b": feature_b,
             "features": fused_feature,
         }
 
-    def _extract_branch_c_features(self, image_forensic: torch.Tensor) -> torch.Tensor:
+    def _extract_branch_b_features(self, image_forensic: torch.Tensor) -> torch.Tensor:
         """
-        Extract Branch C features.
+        Extract Branch B features.
 
-        Preferred Branch C interface:
-            branch_c.extract_features(image_forensic)
+        Preferred Branch B interface:
+            branch_b.extract_features(image_forensic)
 
         Backup compatible interface:
-            branch_c(image_forensic) returns a dict with key "features".
+            branch_b(image_forensic) returns a dict with key "features".
         """
 
-        if hasattr(self.branch_c, "extract_features"):
-            feature_c = self.branch_c.extract_features(image_forensic)
-            return feature_c
+        if hasattr(self.branch_b, "extract_features"):
+            feature_b = self.branch_b.extract_features(image_forensic)
+            return feature_b
 
-        outputs = self.branch_c(image_forensic)
+        outputs = self.branch_b(image_forensic)
 
         if not isinstance(outputs, dict):
             raise TypeError(
-                "Branch C must either implement extract_features(image_forensic), "
+                "Branch B must either implement extract_features(image_forensic), "
                 "or forward(image_forensic) must return a dict containing key 'features'."
             )
 
         if "features" not in outputs:
             raise KeyError(
-                "Branch C output dict must contain key 'features' when extract_features() is not implemented."
+                "Branch B output dict must contain key 'features' when extract_features() is not implemented."
             )
 
         return outputs["features"]
@@ -170,12 +170,12 @@ class FusionClassifier(nn.Module):
     """
     Standalone fusion classifier.
 
-    This class is optional. It can be used if features from Branch A and Branch C
+    This class is optional. It can be used if features from Branch A and Branch B
     are already computed outside the model.
 
     Input:
         feature_a: Tensor, shape (B, branch_a_feature_dim)
-        feature_c: Tensor, shape (B, branch_c_feature_dim)
+        feature_b: Tensor, shape (B, branch_b_feature_dim)
 
     Output:
         logits: Tensor, shape (B,)
@@ -184,13 +184,13 @@ class FusionClassifier(nn.Module):
     def __init__(
         self,
         branch_a_feature_dim: int = 128,
-        branch_c_feature_dim: int = 128,
+        branch_b_feature_dim: int = 128,
         fusion_hidden_dim: int = 256,
         fusion_dropout: float = 0.3,
     ) -> None:
         super().__init__()
 
-        fusion_input_dim = branch_a_feature_dim + branch_c_feature_dim
+        fusion_input_dim = branch_a_feature_dim + branch_b_feature_dim
 
         self.classifier = nn.Sequential(
             nn.Linear(fusion_input_dim, fusion_hidden_dim),
@@ -207,8 +207,8 @@ class FusionClassifier(nn.Module):
     def forward(
         self,
         feature_a: torch.Tensor,
-        feature_c: torch.Tensor,
+        feature_b: torch.Tensor,
     ) -> torch.Tensor:
-        fused_feature = torch.cat([feature_a, feature_c], dim=1)
+        fused_feature = torch.cat([feature_a, feature_b], dim=1)
         logits = self.classifier(fused_feature).squeeze(1)
         return logits

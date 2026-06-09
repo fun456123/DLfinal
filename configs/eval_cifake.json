@@ -1,5 +1,5 @@
 {
-  "checkpoint": "runs/cifake_branch_c/best.pt",
+  "checkpoint": "runs/cifake_branch_b/best.pt",
   "dataset_root": "dataset",
   "dataset": "cifake",
   "split": "test",

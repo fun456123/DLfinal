@@ -10,12 +10,12 @@ from torch.utils.data import DataLoader, Subset
 from src.config import parse_args_with_config, save_resolved_config
 from src.data import DATASET_NAMES, PairedTransform, build_dataset, normalize_dataset_names, split_train_val
 from src.engine import evaluate, save_checkpoint, train_one_epoch
-from src.branch_c import PatchForensicBranch
+from src.branch_b import PatchForensicBranch
 from src.fusion import FusionForensicDetector
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train Branch A + Branch C fusion detector")
+    parser = argparse.ArgumentParser(description="Train Branch A + Branch B fusion detector")
     parser.add_argument("--dataset-root", default="dataset", help="Root directory containing cifake/ and tiny-genimage/.")
     parser.add_argument(
         "--dataset",
@@ -42,8 +42,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--patch-size", type=int, default=16)
     parser.add_argument("--stride", type=int, default=8)
     parser.add_argument("--top-k", type=int, default=4)
-    parser.add_argument("--branch-c-feature-dim", "--feature-dim", dest="branch_c_feature_dim", type=int, default=128)
-    parser.add_argument("--freeze-branch-c", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--branch-b-feature-dim", "--feature-dim", dest="branch_b_feature_dim", type=int, default=128)
+    parser.add_argument("--freeze-branch-b", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--fusion-hidden-dim", type=int, default=256)
     parser.add_argument("--fusion-dropout", type=float, default=0.3)
     parser.add_argument("--augment", action=argparse.BooleanOptionalAction, default=False)
@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-train-samples", type=int, default=None, help="Useful for quick smoke tests.")
     parser.add_argument("--max-val-samples", type=int, default=None)
-    parser.add_argument("--output-dir", default="runs/fusion_a_c")
+    parser.add_argument("--output-dir", default="runs/fusion_a_b")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parse_args_with_config(parser)
@@ -106,22 +106,22 @@ def main() -> None:
         pin_memory=device.type == "cuda",
     )
 
-    branch_c = PatchForensicBranch(
+    branch_b = PatchForensicBranch(
         patch_size=args.patch_size,
         stride=args.stride,
         top_k=args.top_k,
-        feature_dim=args.branch_c_feature_dim,
+        feature_dim=args.branch_b_feature_dim,
     )
     model = FusionForensicDetector(
-        branch_c=branch_c,
+        branch_b=branch_b,
         branch_a_backbone=args.branch_a_backbone,
         branch_a_feature_dim=args.branch_a_feature_dim,
-        branch_c_feature_dim=args.branch_c_feature_dim,
+        branch_b_feature_dim=args.branch_b_feature_dim,
         fusion_hidden_dim=args.fusion_hidden_dim,
         fusion_dropout=args.fusion_dropout,
         pretrained_branch_a=args.pretrained_branch_a,
         freeze_branch_a=args.freeze_branch_a,
-        freeze_branch_c=args.freeze_branch_c,
+        freeze_branch_b=args.freeze_branch_b,
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
